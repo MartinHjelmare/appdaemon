@@ -6,7 +6,7 @@ import uuid
 import re
 import requests
 
-import homeassistant as ha
+import appdaemon.homeassistant as ha
 
 class AppDaemon():
 
@@ -16,7 +16,7 @@ class AppDaemon():
     self._error = error
     self.args = args
     self.global_vars = global_vars
-    
+
   def _check_entity(self, entity):
     if "." not in entity:
       raise ValueError("{}: Invalid entity ID: {}".format(self.name, entity))
@@ -25,12 +25,12 @@ class AppDaemon():
 
   def _check_service(self, service):
     if service.find("/") == -1:
-      raise ValueError("Invalid Service Name: {}".format(service))  
-  
+      raise ValueError("Invalid Service Name: {}".format(service))
+
   def split_entity(self, entity_id):
     self._check_entity(entity_id)
     return(entity_id.split("."))
-    
+
   def split_device_list(self, list):
     return list.split(",")
 
@@ -43,8 +43,8 @@ class AppDaemon():
                 "DEBUG": 10,
                 "NOTSET": 0
               }
-    logger.log(levels[level], msg) 
-  
+    logger.log(levels[level], msg)
+
   def log(self, msg, level = "INFO"):
     self.do_log(self._logger, msg, level)
 
@@ -53,26 +53,26 @@ class AppDaemon():
 
   def get_trackers(self):
     return (key for key, value in self.get_state("device_tracker").items())
-    
+
   def get_tracker_state(self, entity_id):
     self._check_entity(entity_id)
     return(self.get_state(entity_id))
-    
+
   def anyone_home(self):
     return ha.anyone_home()
 
   def everyone_home(self):
-    return ha.everyone_home()   
-    
+    return ha.everyone_home()
+
   def noone_home(self):
     return ha.noone_home()
-      
+
   def convert_utc(self, utc):
     return datetime.datetime(*map(int, re.split('[^\d]', utc)[:-1])) + datetime.timedelta(minutes=ha.get_tz_offset())
 
   def get_app(self, name):
     return conf.objects[name]
-    
+
   def friendly_name(self, entity_id):
     self._check_entity(entity_id)
     if entity_id in conf.ha_state:
@@ -81,7 +81,7 @@ class AppDaemon():
       else:
         return entity_id
     return None
-    
+
   def get_state(self, entity_id = None, attribute = None):
     if entity_id != None:
       self._check_entity(entity_id)
@@ -148,9 +148,9 @@ class AppDaemon():
     r = requests.post(apiurl, headers=headers, json = kwargs)
     r.raise_for_status()
     return r.json()
-    
+
   def call_service(self, service, **kwargs):
-    self._check_service(service)    
+    self._check_service(service)
     d, s = service.split("/")
     conf.logger.debug("call_service: {}/{}, {}".format(d, s, kwargs))
     if conf.ha_key != "":
@@ -161,7 +161,7 @@ class AppDaemon():
     r = requests.post(apiurl, headers=headers, json = kwargs)
     r.raise_for_status()
     return r.json()
-    
+
   def turn_on(self, entity_id, **kwargs):
     self._check_entity(entity_id)
     if kwargs == {}:
@@ -170,7 +170,7 @@ class AppDaemon():
       rargs = kwargs
       rargs["entity_id"] = entity_id
     self.call_service("homeassistant/turn_on", **rargs)
-    
+
   def turn_off(self, entity_id):
     self._check_entity(entity_id)
     self.call_service("homeassistant/turn_off", entity_id = entity_id)
@@ -178,7 +178,7 @@ class AppDaemon():
   def toggle(self, entity_id):
     self._check_entity(entity_id)
     self.call_service("homeassistant/toggle", entity_id = entity_id)
-    
+
   def notify(self, message, title=None):
     args ={}
     args["message"] = message
@@ -220,8 +220,8 @@ class AppDaemon():
       del conf.callbacks[name][handle]
     if name in conf.callbacks and conf.callbacks[name] == {}:
       del conf.callbacks[name]
-  
-    
+
+
   def cancel_listen_state(self, handle):
     name = self.name
     conf.logger.debug("Canceling listen_state for {}".format(name))
@@ -229,25 +229,25 @@ class AppDaemon():
       del conf.callbacks[name][handle]
     if name in conf.callbacks and conf.callbacks[name] == {}:
       del conf.callbacks[name]
-  
+
   def sun_up(self):
     return conf.sun["next_rising"] > conf.sun["next_setting"]
 
   def sun_down(self):
     return conf.sun["next_rising"] < conf.sun["next_setting"]
-    
+
   def sunrise(self):
     return ha.sunrise()
 
   def sunset(self):
     return ha.sunset()
-    
+
   def parse_time(self, time_str):
     return ha.parse_time(time_str)
-  
+
   def now_is_between(self, start_time_str, end_time_str):
     return ha.now_is_between(start_time_str, end_time_str, self.name)
-        
+
   def cancel_timer(self, handle):
     name = self.name
     conf.logger.debug("Canceling timer for {}".format(name))
@@ -255,10 +255,10 @@ class AppDaemon():
       del conf.schedule[name][handle]
     if name in conf.schedule and conf.schedule[name] == {}:
       del conf.schedule[name]
-        
+
   def run_in(self, callback, seconds, **kwargs):
     name = self.name
-    conf.logger.debug("Registering run_in in {} seconds for {}".format(seconds, name))  
+    conf.logger.debug("Registering run_in in {} seconds for {}".format(seconds, name))
     # convert seconds to an int if possible since a common pattern is to pass this through from the config file which is a string
     exec_time = datetime.datetime.now().timestamp() + int(seconds)
     handle = self._insert_schedule(name, exec_time, callback, False, None, None, **kwargs)
@@ -295,7 +295,7 @@ class AppDaemon():
       event = event + one_day
     handle = self.run_every(callback, event, 24 * 60 * 60, **kwargs)
     return handle
-    
+
   def run_hourly(self, callback, start, **kwargs):
     name = self.name
     now = datetime.datetime.now()
@@ -306,9 +306,9 @@ class AppDaemon():
       event = event.replace(minute = start.minute, second = start.second)
       if event < now:
         event = event.replace(hour = event.hour + 1)
-      
+
     handle = self.run_every(callback, event, 60 * 60, **kwargs)
-    return handle  
+    return handle
 
   def run_minutely(self, callback, start, **kwargs):
     name = self.name
@@ -322,34 +322,34 @@ class AppDaemon():
         event = event.replace(minute = event.minute + 1)
 
     handle = self.run_every(callback, event, 60, **kwargs)
-    return handle  
+    return handle
 
   def run_every(self, callback, start, interval, **kwargs):
     name = self.name
-    conf.logger.debug("Registering run_every starting {} in {}s intervals for {}".format(start, interval, name))  
+    conf.logger.debug("Registering run_every starting {} in {}s intervals for {}".format(start, interval, name))
     exec_time = start.timestamp()
     handle = self._insert_schedule(name, exec_time, callback, True, interval, None, **kwargs)
     return handle
-    
+
   def run_at_sunset(self, callback, offset, **kwargs):
     name = self.name
-    conf.logger.debug("Registering run_at_sunset with {} second offset for {}".format(offset, name))    
+    conf.logger.debug("Registering run_at_sunset with {} second offset for {}".format(offset, name))
     handle = self._schedule_sun(name, "next_setting", offset, callback, **kwargs)
     return handle
 
   def run_at_sunrise(self, callback, offset, **kwargs):
     name = self.name
-    conf.logger.debug("Registering run_at_sunrise with {} second offset for {}".format(offset, name))    
+    conf.logger.debug("Registering run_at_sunrise with {} second offset for {}".format(offset, name))
     handle = self._schedule_sun(name, "next_rising", offset, callback, **kwargs)
     return handle
-    
+
   def _insert_schedule(self, name, utc, callback, repeat, time, type, **kwargs):
     if name not in conf.schedule:
       conf.schedule[name] = {}
     handle = uuid.uuid4()
     conf.schedule[name][handle] = {"name": name, "id": conf.objects[name]["id"], "callback": callback, "timestamp": utc, "repeat": repeat, "time": time, "type": type, "kwargs": kwargs}
     return handle
-    
+
   def _schedule_sun(self, name, type, offset, callback, **kwargs):
     event = ha.calc_sun(type, offset)
     handle = self._insert_schedule(name, event, callback, True, offset, type, **kwargs)
