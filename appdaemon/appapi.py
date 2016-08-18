@@ -1,4 +1,4 @@
-import conf
+import appdaemon.conf as conf
 import datetime
 from datetime import timezone
 import time

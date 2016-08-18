@@ -18,7 +18,7 @@ from sseclient import SSEClient
 from logging.handlers import RotatingFileHandler
 from queue import Queue
 import threading
-import conf
+import appdaemon.conf as conf
 import time
 import datetime
 import signal
